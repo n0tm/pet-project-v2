@@ -1,0 +1,163 @@
+plugins {
+  id 'org.springframework.boot' version '2.7.6'
+  id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+  id 'com.coditory.integration-test' version '1.4.4'
+  id 'org.owasp.dependencycheck' version '7.2.1'
+  id 'com.diffplug.spotless' version '6.12.0'
+  id 'eclipse'
+  id 'jacoco'
+  id 'idea'
+  id 'java'
+  id 'pmd'
+}
+
+group = 'com.developersboard'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+configurations {
+  compileOnly {
+    extendsFrom annotationProcessor
+  }
+}
+
+repositories {
+  mavenCentral()
+}
+
+ext {
+  mapstructVersion = '1.5.3.Final'
+  springDocVersion = '1.6.12'
+}
+
+dependencies {
+  implementation 'org.thymeleaf.extras:thymeleaf-extras-java8time'
+  implementation 'org.springframework.boot:spring-boot-starter-mail'
+  implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity5'
+  implementation 'org.springframework.boot:spring-boot-starter-security'
+  implementation 'org.springframework.boot:spring-boot-starter-actuator'
+  implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+  implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+  implementation 'org.springframework.boot:spring-boot-starter-data-rest'
+  implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+  // Dev Tools
+  compileOnly 'org.projectlombok:lombok'
+  annotationProcessor 'org.projectlombok:lombok'
+  developmentOnly 'org.springframework.boot:spring-boot-devtools'
+  annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+  // caching
+  implementation 'org.ehcache:ehcache'
+  implementation 'org.hibernate:hibernate-jcache'
+  implementation 'org.ehcache:ehcache-transactions'
+
+  // Utilities
+  implementation 'io.jsonwebtoken:jjwt:0.9.1'
+  implementation 'commons-io:commons-io:2.11.0'
+  implementation 'net.datafaker:datafaker:1.6.0'
+  implementation 'com.google.code.gson:gson:2.10'
+  implementation 'commons-validator:commons-validator:1.7'
+  implementation 'com.github.darrachequesne:spring-data-jpa-datatables:5.2.0'
+
+  // Documentation and API Tools
+  implementation "org.springdoc:springdoc-openapi-ui:${springDocVersion}"
+  implementation "org.springdoc:springdoc-openapi-javadoc:${springDocVersion}"
+  implementation "org.springdoc:springdoc-openapi-security:${springDocVersion}"
+  implementation "org.springdoc:springdoc-openapi-data-rest:${springDocVersion}"
+  annotationProcessor 'com.github.therapi:therapi-runtime-javadoc-scribe:0.15.0'
+
+  // Database and File Storage Tools
+  implementation 'com.h2database:h2'
+  runtimeOnly 'org.postgresql:postgresql'
+  implementation 'org.hibernate:hibernate-envers'
+  implementation 'com.amazonaws:aws-java-sdk-s3:1.12.328'
+  implementation files('libs/hypersistence-optimizer-2.6.0.jar')
+
+  // MapStruct for Object Mapping
+  implementation "org.mapstruct:mapstruct:${mapstructVersion}"
+  annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
+
+  // Webjars
+  implementation 'org.webjars:jquery:3.6.1'
+  implementation 'org.webjars:bootstrap:5.2.2'
+  implementation 'org.webjars:popper.js:2.9.3'
+  implementation 'org.webjars:jquery-ui:1.13.2'
+  implementation 'org.webjars:datatables:1.12.1'
+  implementation 'org.webjars:font-awesome:6.2.0'
+  implementation 'org.webjars:webjars-locator:0.46'
+
+  // Testing
+  testCompileOnly 'org.projectlombok:lombok'
+  testAnnotationProcessor 'org.projectlombok:lombok'
+
+  testImplementation 'org.mockito:mockito-inline'
+  testImplementation 'io.findify:s3mock_2.13:0.2.6'
+  testImplementation  'com.icegreen:greenmail-junit5:1.6.11'
+  testImplementation 'com.jparams:to-string-verifier:1.4.8'
+  testImplementation 'nl.jqno.equalsverifier:equalsverifier:3.10.1'
+  testImplementation 'org.springframework.boot:spring-boot-starter-test'
+  testImplementation 'org.springframework.security:spring-security-test'
+}
+
+tasks.withType(Test).configureEach {
+  useJUnitPlatform()
+  finalizedBy jacocoTestReport
+  maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
+}
+
+tasks.withType(JavaCompile).configureEach {
+  options.compilerArgs += ['-Xlint:deprecation']
+}
+
+jacocoTestReport {
+  executionData(fileTree(project.buildDir).include("jacoco/*.exec"))
+  reports {
+    xml.required = true
+    html.required = true
+    csv.required = true
+  }
+
+  afterEvaluate {
+    classDirectories.setFrom(files(classDirectories.files.collect {
+      fileTree(dir: it, exclude: [
+          "**/exception/*",
+          "**/enums/*",
+          "**/constant/*",
+          "**/config/*",
+          "**/backend/bootstrap/*",
+          "**/Mock*.class",
+          "**/*DtoMapperImpl.class",
+      ])
+    }))
+  }
+}
+
+spotless {
+  format 'misc', {
+    // define the files to apply `misc` to
+    target '*.gradle', '*.md', '.gitignore'
+
+    // define the steps to apply to those files
+    trimTrailingWhitespace()
+    indentWithSpaces()
+    endWithNewline()
+  }
+
+  java {
+
+    // define the steps to apply to those files
+    trimTrailingWhitespace()
+    indentWithSpaces()
+    endWithNewline()
+    removeUnusedImports()
+    googleJavaFormat()
+  }
+}
+
+pmd {
+  consoleOutput = true
+  ruleSetFiles = files("${project.rootDir}/config/pmd-ruleset.xml")
+  ruleSets = []
+}
